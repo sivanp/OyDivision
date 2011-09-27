@@ -25,7 +25,7 @@ function varargout = movie_editor2(varargin)
 
 % Edit the above text to modify the response to help movie_editor2
 
-% Last Modified by GUIDE v2.5 25-Sep-2011 18:33:29
+% Last Modified by GUIDE v2.5 27-Sep-2011 11:53:49
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -312,6 +312,40 @@ else
     zoom off;
 end
 guidata(hObject, handles);
+
+% --- Executes when selected object is changed in fate_groupBtn.
+function fate_groupBtn_SelectionChangeFcn(hObject, eventdata, handles)
+% hObject    handle to the selected object in fate_groupBtn 
+% eventdata  structure with the following fields (see UIBUTTONGROUP)
+%	EventName: string 'SelectionChanged' (read only)
+%	OldValue: handle of the previously selected object or empty if none was selected
+%	NewValue: handle of the currently selected object
+% handles    structure with handles and user data (see GUIDATA)
+lymphid=get(handles.id_edit,'String');
+if(isempty(lymphid))
+    return;
+end
+lymphid=str2num(lymphid);
+movie=getCellStruct();
+[lymph, siteind,lymphind]=getLymph(lymphid,movie);
+
+switch get(eventdata.NewValue,'Tag')   % Get Tag of selected object
+    case 'div_fate_btn'
+      %execute this code when fontsize08_radiobutton is selected
+      lymph.fate=1;
+
+    case 'die_fate_btn'
+      %execute this code when fontsize12_radiobutton is selected
+      lymph.fate=2;
+
+    case 'tillEnd_fate_btn'
+      %execute this code when fontsize16_radiobutton is selected
+    lymph.fate=0;
+end
+movie.sites(siteind).lymphs(lymphind)=lymph;
+assignin('base','movie',movie);
+
+
 
 function btnGroup_SelectionChangeFnc(hObject, eventdata)
 handles = guidata(hObject);
@@ -778,6 +812,7 @@ lymph.locations=[];
 lymph.fluos=[];
 lymph.name='';
 lymph.remark=[];
+lymph.fate=0; %fate 1=div, fate 2=die   default: 0 =till end- out of frame or focus/nor dividing nor dying.
 [sitenum,framenum]=getSiteFrame(handles);
 if(lymphid==1 ||  sitenum>length(movie.sites))
     ind=1;
@@ -1670,4 +1705,5 @@ projectDir=get(handles.edit1 ,'String');
 [sitenum,framenum]=getSiteFrame(handles);
 outputDir=uigetdir('','Choose project directory');
 alignImages(projectDir, filePrefix, sitenum,outputDir);
+
 
