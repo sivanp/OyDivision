@@ -980,6 +980,15 @@ else
     set(handles.momname_edit,'String',mom.name);
     set(handles.momid_edit,'String',momid);
 end
+switch lymph.fate
+    case 0
+    set(handles.tillEnd_fate_btn,'Value',1);
+    case 1
+    set(handles.div_fate_btn,'Value',1);
+    case 2
+    set(handles.die_fate_btn,'Value',1);
+end
+% set(handles.fate_groupBtn,'SelectedObject',) 
 
 function momid=findMom(lymphid)
 momid=-1;
