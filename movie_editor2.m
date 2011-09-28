@@ -25,7 +25,7 @@ function varargout = movie_editor2(varargin)
 
 % Edit the above text to modify the response to help movie_editor2
 
-% Last Modified by GUIDE v2.5 27-Sep-2011 11:53:49
+% Last Modified by GUIDE v2.5 28-Sep-2011 10:14:30
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -281,7 +281,7 @@ function load_btn_Callback(hObject, eventdata, handles)
 % hObject    handle to loadfile_btn (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-showImage(handles,0);
+showImage(handles,1);
 setThreshSliderRange(handles);
 showThreshold(handles);
 
@@ -308,10 +308,32 @@ val = get(hObject,'Value');
 axes(handles.axes1);
 if(val == 1)
     zoom on;
+    pan off;
+    set(handles.pan_btn,'Value',0);
 else
     zoom off;
 end
 guidata(hObject, handles);
+
+% --- Executes on button press in pan_btn.
+function pan_btn_Callback(hObject, eventdata, handles)
+% hObject    handle to pan_btn (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of pan_btn
+val = get(hObject,'Value');
+axes(handles.axes1);
+if(val == 1)
+    pan on;
+    zoom off;
+    set(handles.zoom_btn,'Value',0);
+else
+    pan off;
+end
+guidata(hObject, handles);
+
+
 
 % --- Executes when selected object is changed in fate_groupBtn.
 function fate_groupBtn_SelectionChangeFcn(hObject, eventdata, handles)
@@ -1714,5 +1736,3 @@ projectDir=get(handles.edit1 ,'String');
 [sitenum,framenum]=getSiteFrame(handles);
 outputDir=uigetdir('','Choose project directory');
 alignImages(projectDir, filePrefix, sitenum,outputDir);
-
-
