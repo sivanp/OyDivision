@@ -1740,5 +1740,5 @@ function alignImg_Callback(hObject, eventdata, handles)
 filePrefix=get(handles.edit5 ,'String');
 projectDir=get(handles.edit1 ,'String');
 [sitenum,framenum]=getSiteFrame(handles);
-outputDir=uigetdir('','Choose project directory');
+outputDir=uigetdir('','Choose project directory for result');
 alignImages(projectDir, filePrefix, sitenum,outputDir);
