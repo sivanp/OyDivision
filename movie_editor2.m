@@ -876,8 +876,14 @@ catch
 end
 xzoom=xlim(handles.axes1);
 yzoom=ylim(handles.axes1);
+
 axes(handles.axes1);
+imprev=getImage(handles.axes1);
+if(isempty(imprev))
+   keepzoom=0;
+end
 imshow(im,[])
+
 if(keepzoom)
     xlim(xzoom);
     ylim(yzoom);
