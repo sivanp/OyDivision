@@ -62,8 +62,8 @@ guidata(hObject, handles);
 
 % UIWAIT makes movie_editor2 wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
-addpath('C:\Users\sivan-nqb\Desktop\ManualTracker\analysis scripts')
-addpath('C:\Users\sivan-nqb\Desktop\ManualTracker\motion')
+addpath('C:\Users\owner\Documents\MATLAB\ManualTracker4orit\analysis scripts')
+addpath('C:\Users\owner\Documents\MATLAB\ManualTracker4orit\motion')
 
 set(handles.figure1,'KeyPressFcn',@keyFwd)
 set(handles.btnGroup,'SelectionChangeFcn',@btnGroup_SelectionChangeFnc);
@@ -290,8 +290,8 @@ showThreshold(handles);
 function setThreshSliderRange(handles)
 im=getImage(handles.axes1);
 % maxVal=max(max(double(im)));
-% maxVal=2^16-1;
-maxVal=4095;
+ maxVal=2^16-1;
+% maxVal=4095;
 set(handles.thresh_slider, 'Max',maxVal);
 set(handles.thresholdMax_slider, 'Max',maxVal);
 
@@ -876,14 +876,12 @@ catch
 end
 xzoom=xlim(handles.axes1);
 yzoom=ylim(handles.axes1);
-
 axes(handles.axes1);
 imprev=getImage(handles.axes1);
 if(isempty(imprev))
    keepzoom=0;
 end
 imshow(im,[])
-
 if(keepzoom)
     xlim(xzoom);
     ylim(yzoom);
@@ -1550,8 +1548,10 @@ fileTemplate=sprintf('%s\\%s', projectDir, fileTemplate);
 fluoname= inputdlg('what is the fluocesence name?');
 movie=getCellStruct();
 movie=extractFluoFromMovie(movie,fileTemplate, fluoname);
-assignin('base','movie',movie);
-saveCellsStruct(handles);
+if(~isempty(movie))
+    assignin('base','movie',movie);
+    saveCellsStruct(handles);
+end
 
 
 % --------------------------------------------------------------------
@@ -1740,5 +1740,5 @@ function alignImg_Callback(hObject, eventdata, handles)
 filePrefix=get(handles.edit5 ,'String');
 projectDir=get(handles.edit1 ,'String');
 [sitenum,framenum]=getSiteFrame(handles);
-outputDir=uigetdir('','Choose project directory for result');
+outputDir=uigetdir('','Choose project directory');
 alignImages(projectDir, filePrefix, sitenum,outputDir);

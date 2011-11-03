@@ -41,8 +41,13 @@ for i=1: length(movie.sites)
             ys=lymph.locations{k}(:,2);
             mask=poly2mask(xs,ys,r,c);
             inds=(find(mask>0));
+            if(isempty(inds))
+                msgbox(sprintf('problems defining lymphid %d in frame %d',lymph.id,framenum))
+                fluomovie=[];
+                return
+            end
             fluo.Frames(indf)=framenum;
-            fluo.Means(indf)=mean(im(inds));
+            fluo.Means(indf)=mean(im(inds));            
             fluo.Max(indf)=max(im(inds));
             fluo.Min(indf)=min(im(inds));
             fluo.Std(indf)=std(single(im(inds)));
