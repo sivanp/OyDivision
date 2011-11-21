@@ -25,7 +25,7 @@ function varargout = movie_editor2(varargin)
 
 % Edit the above text to modify the response to help movie_editor2
 
-% Last Modified by GUIDE v2.5 28-Sep-2011 10:14:30
+% Last Modified by GUIDE v2.5 14-Nov-2011 15:44:46
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -62,8 +62,8 @@ guidata(hObject, handles);
 
 % UIWAIT makes movie_editor2 wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
-addpath('C:\Users\owner\Documents\MATLAB\ManualTracker4orit\analysis scripts')
-addpath('C:\Users\owner\Documents\MATLAB\ManualTracker4orit\motion')
+addpath('C:\Users\sivan-nqb\Desktop\OyDivision\analysis scripts')
+addpath('C:\Users\sivan-nqb\Desktop\OyDivision\motion')
 
 set(handles.figure1,'KeyPressFcn',@keyFwd)
 set(handles.btnGroup,'SelectionChangeFcn',@btnGroup_SelectionChangeFnc);
@@ -908,7 +908,7 @@ if(isempty(movie) ||length(movie.sites)<sitenum || length(movie.sites(sitenum).l
     return;
 end
 lymphs=movie.sites(sitenum).lymphs;
-for i=1:length(lymphs)
+for i=1:length(lymphs)    
     lymph=lymphs(i);
     ind=find(lymph.frames==framenum);
     if(isempty(ind))
@@ -1528,7 +1528,6 @@ function extractFluo_menubtn_Callback(hObject, eventdata, handles)
 %Note that whether normalized or unnormalized paths are placed, the default
 %is to use normalized pictures i.e names such as:
 %L1210Fucci9_filter_1_expo4000_offset10_1_normalized_1439.
-loadCellsStruct(handles);
 projectDir=get(handles.edit1 ,'String');
 [filename,projectDir]= uigetfile('*.tif', 'pick fluoresence type file',projectDir);
 i=regexp(filename,'_\d+_normalized_\d+.tif');
@@ -1636,8 +1635,8 @@ switch button
         %copy recepients's daughters to donor earse daughters from
         %recipeints
         
-        rDaughtersIDs=find(movie.momDaughTable(:,1)==receipeint.id);
-        for i=1:length(rDaughtersIDS)
+        rDaughtersIDs=find(movie.momDaughTable(:,1)==recipient.id);
+        for i=1:length(rDaughtersIDs)
             movie=deleteMom(movie,rDaughtersIds(i), recipient.id);
             movie=addMomDaughterCouple(movie, donor.id, rDaughtersIds(i));
         end
@@ -1742,3 +1741,44 @@ projectDir=get(handles.edit1 ,'String');
 [sitenum,framenum]=getSiteFrame(handles);
 outputDir=uigetdir('','Choose project directory');
 alignImages(projectDir, filePrefix, sitenum,outputDir);
+
+
+% --------------------------------------------------------------------
+function normalizeFluoPerCellPerFrame_Callback(hObject, eventdata, handles)
+% hObject    handle to normalizeFluoPerCellPerFrame (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+projectDir=get(handles.edit1 ,'String');
+loadCellsStruct(handles);
+movie=evalin('base', 'movie');
+createNormalizedFluoPerCellsPerFrame(projectDir,movie);
+
+
+% --------------------------------------------------------------------
+function changeFileTemplateBtn_Callback(hObject, eventdata, handles)
+% hObject    handle to changeFileTemplateBtn (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+%This is to concatenate 2 movie paths. 
+projectDir=get(handles.edit1 ,'String');
+[basename,baseDir]= uigetfile('*.tif', 'load base path',projectDir);
+[secname,secDir]= uigetfile('*.tif', 'load path to convert',projectDir);
+[baseTemplate,lastFrame]=getBasePathParams(baseDir,basename);
+basenum= inputdlg('','convertion begins at which frame? ',1,{sprintf('%d',lastFrame+1)});
+basenum=str2num(basenum{1});
+[secTemplate,lastFrame,secFrame]=getBasePathParams(secDir,secname);
+num2add=basenum-secFrame;
+secOutput = dir(fullfile(secDir,sprintf('%s*',secTemplate)));
+secfileVec   = {secOutput.name}';
+for i=1:length(secfileVec)
+    nameTokens=regexp(secfileVec{i},'.+(_expo.+_)(\d+).tif','tokens');
+    currFrame=str2num(nameTokens{1}{2});
+    newSecName=sprintf('%s%s%d.tif',baseTemplate,nameTokens{1}{1},currFrame+num2add);
+    fileToConvert=fullfile(secDir,secfileVec{i});
+    newPath=fullfile(baseDir,newSecName);
+    copyfile(fileToConvert,newPath);
+end
+
+
+
+

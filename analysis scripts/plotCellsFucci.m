@@ -2,7 +2,7 @@
 %that is.
 function plotCellsFucci(first, last, movie)
 for i=first:last
-%     drugT=966;
+    drugT=954;
     lymph=getLymph(i,movie);
     if(isempty(lymph))
         continue;
@@ -27,9 +27,9 @@ for i=first:last
     set(get(AX(2),'Ylabel'),'String','mAG')
     set(AX(1),'FontSize',12)
     set(AX(2),'FontSize',12)
-%     if(~isempty(find(timesKO>drugT)) && ~isempty(find(timesKO<drugT)))
-%         plot(ones(2,1)*drugT,[min(ko),max(ko)],'k-')
-%     end
+    if(~isempty(find(timesKO>drugT)) && ~isempty(find(timesKO<drugT)))
+        plot(ones(2,1)*drugT,[min(ko),max(ko)],'k-')
+    end
     name =  lymph.name;
     rem=lymph.remark;
     name=sprintf('%s %s',name,rem);
