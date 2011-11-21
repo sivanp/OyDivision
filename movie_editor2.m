@@ -25,7 +25,7 @@ function varargout = movie_editor2(varargin)
 
 % Edit the above text to modify the response to help movie_editor2
 
-% Last Modified by GUIDE v2.5 14-Nov-2011 15:44:46
+% Last Modified by GUIDE v2.5 21-Nov-2011 12:01:05
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -1780,5 +1780,69 @@ for i=1:length(secfileVec)
 end
 
 
+
+
+
+
+% --------------------------------------------------------------------
+function compile_movie_Callback(hObject, eventdata, handles)
+% hObject    handle to compile_movie (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+%all lymphs is a struct-array containing all lymphs
+%lymphMappingMat is a Nx4 matirx, where each line corresponde to a specific
+%lymphocyte. first column has the lymph inds in the allLymphs array, second
+%column the lymph id, thirs the lymph site and fourth 1 if has both mother
+%and duaghtres (i.e. 'complete') and 0 otherwise.
+%this also sorts all the frames and values of locations etc.
+projectDir=get(handles.edit1 ,'String');
+[filename,projectDir]= uigetfile('*.mat', 'load movie struct',projectDir);
+path=sprintf('%s\\%s', projectDir, filename);
+load(path,'movie');
+assignin('base','movie',movie);
+allLymphs=[];
+lymphMappingMat=[];
+ind=1;
+matInd=1;
+for i=1:length(movie.sites)
+    lymphs=movie.sites(i).lymphs;
+    for j=1:length(lymphs)
+        l=lymphs(j);
+        %TODO sortLymph
+        lymph.id=l.id;
+        lymph.name=l.name;
+%         lymph.fate=l.fate;
+        [sframes,sinds]=sort(l.frames);
+        lymph.frames=sframes;
+        lymph.locations=l.locations(sinds);
+        for f=1:length(l.fluos)
+            fluo=l.fluos{f};
+            nfluo.name=fluo.name;
+            nfluo.path=fluo.path;         
+            [sframes,sinds]=sort(fluo.Frames);
+            nfluo.Frames=sframes;
+            nfluo.Means=fluo.Means(sinds);
+            nfluo.Max=fluo.Max(sinds);
+            nfluo.Min=fluo.Min(sinds);
+            nfluo.Std=fluo.Std(sinds);
+            lymph.fluos{f}=nfluo;
+        end
+        %
+        allLymphs{ind}=lymph;
+        lymphMappingMat(matInd,1)=ind;
+        lymphMappingMat(matInd,2)=lymph.id;
+        lymphMappingMat(matInd,3)=i;        
+        mid=find(movie.momDaughTable(:,2)==lymph.id,1);
+        if(movie.momDaughTable(mid,1)~=-1 && ~isempty(find(movie.momDaughTable(:,1),1)))
+            lymphMappingMat(matInd,4)=1;        
+        else
+            lymphMappingMat(matInd,4)=0;        
+        end
+        matInd=matInd+1;
+        ind=ind+1;
+    end
+     assignin('base','allLymphs',allLymphs);
+     assignin('base','lymphMappingMat',lymphMappingMat);
+end
 
 
