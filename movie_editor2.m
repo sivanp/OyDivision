@@ -290,7 +290,7 @@ showThreshold(handles);
 function setThreshSliderRange(handles)
 im=getImage(handles.axes1);
 % maxVal=max(max(double(im)));
- maxVal=2^16-1;
+maxVal=2^16-1;
 % maxVal=4095;
 set(handles.thresh_slider, 'Max',maxVal);
 set(handles.thresholdMax_slider, 'Max',maxVal);
@@ -337,7 +337,7 @@ guidata(hObject, handles);
 
 % --- Executes when selected object is changed in fate_groupBtn.
 function fate_groupBtn_SelectionChangeFcn(hObject, eventdata, handles)
-% hObject    handle to the selected object in fate_groupBtn 
+% hObject    handle to the selected object in fate_groupBtn
 % eventdata  structure with the following fields (see UIBUTTONGROUP)
 %	EventName: string 'SelectionChanged' (read only)
 %	OldValue: handle of the previously selected object or empty if none was selected
@@ -353,16 +353,18 @@ movie=getCellStruct();
 
 switch get(eventdata.NewValue,'Tag')   % Get Tag of selected object
     case 'div_fate_btn'
-      %execute this code when fontsize08_radiobutton is selected
-      lymph.fate=1;
-
+        %execute this code when fontsize08_radiobutton is selected
+        lymph.fate=1;
+        
     case 'die_fate_btn'
-      %execute this code when fontsize12_radiobutton is selected
-      lymph.fate=2;
-
+        %execute this code when fontsize12_radiobutton is selected
+        lymph.fate=2;
+        
     case 'tillEnd_fate_btn'
-      %execute this code when fontsize16_radiobutton is selected
-    lymph.fate=0;
+        %execute this code when fontsize16_radiobutton is selected
+        lymph.fate=0;
+    case 'outOfFrame_fate_btn'
+        lymph.fate=3;
 end
 movie.sites(siteind).lymphs(lymphind)=lymph;
 assignin('base','movie',movie);
@@ -879,7 +881,7 @@ yzoom=ylim(handles.axes1);
 axes(handles.axes1);
 imprev=getImage(handles.axes1);
 if(isempty(imprev))
-   keepzoom=0;
+    keepzoom=0;
 end
 imshow(im,[])
 if(keepzoom)
@@ -908,7 +910,7 @@ if(isempty(movie) ||length(movie.sites)<sitenum || length(movie.sites(sitenum).l
     return;
 end
 lymphs=movie.sites(sitenum).lymphs;
-for i=1:length(lymphs)    
+for i=1:length(lymphs)
     lymph=lymphs(i);
     ind=find(lymph.frames==framenum);
     if(isempty(ind))
@@ -1008,13 +1010,13 @@ else
 end
 switch lymph.fate
     case 0
-    set(handles.tillEnd_fate_btn,'Value',1);
+        set(handles.tillEnd_fate_btn,'Value',1);
     case 1
-    set(handles.div_fate_btn,'Value',1);
+        set(handles.div_fate_btn,'Value',1);
     case 2
-    set(handles.die_fate_btn,'Value',1);
+        set(handles.die_fate_btn,'Value',1);
 end
-% set(handles.fate_groupBtn,'SelectedObject',) 
+% set(handles.fate_groupBtn,'SelectedObject',)
 
 function momid=findMom(lymphid)
 momid=-1;
@@ -1759,7 +1761,7 @@ function changeFileTemplateBtn_Callback(hObject, eventdata, handles)
 % hObject    handle to changeFileTemplateBtn (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-%This is to concatenate 2 movie paths. 
+%This is to concatenate 2 movie paths.
 projectDir=get(handles.edit1 ,'String');
 [basename,baseDir]= uigetfile('*.tif', 'load base path',projectDir);
 [secname,secDir]= uigetfile('*.tif', 'load path to convert',projectDir);
@@ -1794,6 +1796,7 @@ function compile_movie_Callback(hObject, eventdata, handles)
 %lymphocyte. first column has the lymph inds in the allLymphs array, second
 %column the lymph id, thirs the lymph site and fourth 1 if has both mother
 %and duaghtres (i.e. 'complete') and 0 otherwise.
+%in column 5 the lineage ancestor name is given
 %this also sorts all the frames and values of locations etc.
 projectDir=get(handles.edit1 ,'String');
 [filename,projectDir]= uigetfile('*.mat', 'load movie struct',projectDir);
@@ -1804,21 +1807,23 @@ allLymphs=[];
 lymphMappingMat=[];
 ind=1;
 matInd=1;
+%TODO check if fate -divide mathces the movie.MomDaughtTable
 for i=1:length(movie.sites)
     lymphs=movie.sites(i).lymphs;
     for j=1:length(lymphs)
         l=lymphs(j);
-        %TODO sortLymph
+        %sortLymph
         lymph.id=l.id;
         lymph.name=l.name;
-%         lymph.fate=l.fate;
+        lymph.fate=l.fate;
         [sframes,sinds]=sort(l.frames);
         lymph.frames=sframes;
+        lymph.times=movie.times(sframes-1000);
         lymph.locations=l.locations(sinds);
         for f=1:length(l.fluos)
             fluo=l.fluos{f};
             nfluo.name=fluo.name;
-            nfluo.path=fluo.path;         
+            nfluo.path=fluo.path;
             [sframes,sinds]=sort(fluo.Frames);
             nfluo.Frames=sframes;
             nfluo.Means=fluo.Means(sinds);
@@ -1833,16 +1838,22 @@ for i=1:length(movie.sites)
         lymphMappingMat(matInd,2)=lymph.id;
         lymphMappingMat(matInd,3)=i;        
         mid=find(movie.momDaughTable(:,2)==lymph.id,1);
-        if(movie.momDaughTable(mid,1)~=-1 && ~isempty(find(movie.momDaughTable(:,1),1)))
-            lymphMappingMat(matInd,4)=1;        
+        if(movie.momDaughTable(mid,1)~=-1 && ~isempty(find(movie.momDaughTable(:,1)==lymph.id,1)))
+            lymphMappingMat(matInd,4)=1;
         else
-            lymphMappingMat(matInd,4)=0;        
+            lymphMappingMat(matInd,4)=0;
+        end       
+        g=regexp(lymph.name,'_');
+        if(isempty(g))           
+            lymphMappingMat(matInd,5)=str2num(lymph.name);
+        else
+            lymphMappingMat(matInd,5)=str2num(lymph.name(1:g(1)-1));
         end
         matInd=matInd+1;
         ind=ind+1;
     end
-     assignin('base','allLymphs',allLymphs);
-     assignin('base','lymphMappingMat',lymphMappingMat);
+    assignin('base','allLymphs',allLymphs);
+    assignin('base','lymphMappingMat',lymphMappingMat);
 end
 
 
