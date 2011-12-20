@@ -25,7 +25,7 @@ function varargout = movie_editor2(varargin)
 
 % Edit the above text to modify the response to help movie_editor2
 
-% Last Modified by GUIDE v2.5 21-Nov-2011 12:01:05
+% Last Modified by GUIDE v2.5 18-Dec-2011 17:52:38
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -755,6 +755,8 @@ switch button
             movie.momDaughTable(inds,1)=-1;
         end
         movie.sites(siteind).lymphs(lymphind)=[];
+        %also delete from monitor list
+        removeFromList(lymphid);
     case 'cell mark in frame'
         [sitenum, framenum]=getSiteFrame(handles);
         ind=find(lymph.frames==framenum);
@@ -883,7 +885,7 @@ imprev=getImage(handles.axes1);
 if(isempty(imprev))
     keepzoom=0;
 end
-imshow(im,[])
+im=imshow(im,[]);
 if(keepzoom)
     xlim(xzoom);
     ylim(yzoom);
@@ -892,6 +894,9 @@ if(isDispOutlinesChecked(handles))
     displayOutlinesPerFrame(handles)
 end
 res=1;
+cmenu=get(handles.axes1,'UIContextMenu');
+set(im,'UIContextMenu',cmenu);
+
 
 
 function [movie]=getCellStruct()
@@ -901,6 +906,16 @@ catch
     movie=[];
 end
 
+
+function [monitorList]=getMonitorList()
+try
+    monitorList=evalin('base', 'monitorList');
+catch
+    monitorList=[];
+end
+
+
+
 function displayOutlinesPerFrame(handles)
 axes(handles.axes1);
 hold on
@@ -909,6 +924,7 @@ movie=getCellStruct();
 if(isempty(movie) ||length(movie.sites)<sitenum || length(movie.sites(sitenum).lymphs)==0) %% no lymphs exists for this site
     return;
 end
+cmenu=get(handles.axes1,'UIContextMenu');
 lymphs=movie.sites(sitenum).lymphs;
 for i=1:length(lymphs)
     lymph=lymphs(i);
@@ -921,8 +937,12 @@ for i=1:length(lymphs)
     ys=lymph.locations{ind}(:,2);
     cx=mean(xs);
     cy=mean(ys);
-    plot(xs,ys,'-b')
-    text(cx,cy,lymph.name);
+    if(isInMonitorList(lymph.id))
+        plot(xs,ys,'-c','UIContextMenu',cmenu)
+    else
+        plot(xs,ys,'-b','UIContextMenu',cmenu)
+    end
+    text(cx,cy,lymph.name,'UIContextMenu',cmenu);
 end
 %mark the current cell in green
 lymphid=get(handles.id_edit,'String');
@@ -941,7 +961,7 @@ end
 locations=lymph.locations(ind);
 xs=lymph.locations{ind}(:,1);
 ys=lymph.locations{ind}(:,2);
-plot(xs,ys,'-g')
+plot(xs,ys,'-g','UIContextMenu',cmenu)
 
 hold off
 
@@ -1127,7 +1147,8 @@ thmax= get(handles.thresholdMax_slider,'Value');
 bwthresh= thresholdImage(handles);
 inds=find(bwthresh>0);
 [xs,ys]=ind2sub(size(im),inds);
-plot(ys, xs,'r.', 'MarkerSize',1);
+cmenu=get(handles.axes1,'UIContextMenu');
+plot(ys, xs,'r.', 'MarkerSize',1,'UIContextMenu',cmenu);
 % thim=uint16(zeros([size(bwthresh), 3]));
 % thim(:,:,1)=uint16(bwthresh*(2^16-1));
 % thim(:,:,1)=thim(:,:,1) + im;
@@ -1179,53 +1200,79 @@ isPressed = get(hObject,'Value');
 if(~isPressed)
     return
 end
-axes(handles.axes1);
-hold on
-[x y] = ginput(1);
-[res, lymphid,centroid,bBox]=magicWand(x,y,handles);
+% axes(handles.axes1);
+% hold on
+% [x y] = ginput(1);
+% [res, lymphid,centroid,bBox]=magicWand(x,y,handles);
+monitorList=getMonitorList();
+%first time- collect all centroids
+for l=1:length(monitorList)
+    lymphid=monitorList(l);
+    [centroid,bBox]=getLymphCentroid(lymphid,handles);
+    centroids(l)=centroid;
+    bBoxes(l)=bBox;
+end
+res=1;
 while(isPressed && res)
     fwdFrame(handles);
-    bwthresh=thresholdImage(handles);
-    L=bwlabel(bwthresh);
-    uniqVal=L(round(centroid(2)),round(centroid(1)));
-    if(uniqVal==0)
-        [xs, ys]=find(L>0);
-        posXs=find(xs>=bBox(2)  & xs<bBox(2)+bBox(4));
-        posYs=find(ys>=bBox(1)  & ys<bBox(1)+bBox(3));
-        posXYs=intersect(posXs,posYs);
-        if(isempty(posXYs))
-            set(hObject,'Value',0);
-            return;
-        end
-        xs=xs(posXYs);
-        ys=ys(posXYs);
-        vals=L(xs,ys);
-        uniqVal=unique(vals);
-        uniqVal=setdiff(uniqVal,0);
-        if(length(uniqVal)>1)   % more than one label- can't decid- abortting
-            set(hObject,'Value',0);
-            return;
-        end
-    end
-    %here uniqVal should be the label number
-    L=(L==uniqVal);
-    [B]=bwboundaries(L);
-    B=B{1}; %assuming we have one and only one  object here
-    xs=B(:,2);
-    ys=B(:,1);
-    centroid = regionprops(L, 'centroid');
-    centroid=centroid.Centroid;
-    [res, lymphid]=addLymphMarkToWorkspace(xs,ys,handles);
-    if(res>0)
+    for l=1:length(monitorList)        
+        bwthresh=thresholdImage(handles);
+        L=bwlabel(bwthresh);
+        lymphid=monitorList(l);
+        centroid=centroids(l).Centroid;
         updateLymphGui(lymphid, handles);
-    elseif(res==0)
-        updateLymphGui('', handles);
+        uniqVal=L(round(centroid(2)),round(centroid(1)));
+        if(uniqVal==0)
+            [xs, ys]=find(L>0);
+            bBox=bBoxes(l).BoundingBox;
+            posXs=find(xs>=bBox(2)  & xs<bBox(2)+bBox(4));
+            posYs=find(ys>=bBox(1)  & ys<bBox(1)+bBox(3));
+            posXYs=intersect(posXs,posYs);
+            if(isempty(posXYs))
+                set(hObject,'Value',0);
+                reses(l)=0;
+                res=0;
+                continue;
+            end
+            xs=xs(posXYs);
+            ys=ys(posXYs);
+            vals=L(xs,ys);
+            uniqVal=unique(vals);
+            uniqVal=setdiff(uniqVal,0);
+            if(length(uniqVal)>1)   % more than one label- can't decid- abortting
+                set(hObject,'Value',0);
+                reses(l)=0;
+                res=0;
+                continue;
+            end
+        end
+        %here uniqVal should be the label number
+        L=(L==uniqVal);
+        [B]=bwboundaries(L);
+        B=B{1}; %assuming we have one and only one  object here
+        xs=B(:,2);
+        ys=B(:,1);
+        centroid = regionprops(L, 'centroid');
+%         centroid=centroid.Centroid;
+        centroids(l)=centroid; %updating the new centorid 
+        [r, lymphid]=addLymphMarkToWorkspace(xs,ys,handles);
+        if(r>0)
+            updateLymphGui(lymphid, handles);
+            reses(l)=1;
+        elseif(r==0)
+            updateLymphGui('', handles);
+            reses(l)=0;
+            res=0;
+            
+        end
+        showImage(handles,1);
+        showThreshold(handles);        
+        isPressed = get(hObject,'Value');
+        
     end
-    showImage(handles,1);
-    showThreshold(handles);
     pause(0.1);
-    isPressed = get(hObject,'Value');
 end
+
 
 
 %return 0 if not added, 1 if did, 2-if new cell was created.
@@ -1239,6 +1286,8 @@ if (isempty(movie)) %create new movie object
     movie.momDaughInd=0;
     movie.lineageInd=0;
     assignin('base','movie',movie);
+    monitorList=[];
+    assignin('base','monitorList',monitorList);
 end
 
 if(isfield(movie,'sites') && length(movie.sites)>=sitenum && isfield(movie.sites(sitenum), 'lymphs') && ~isempty(movie.sites(sitenum).lymphs))
@@ -1836,15 +1885,15 @@ for i=1:length(movie.sites)
         allLymphs{ind}=lymph;
         lymphMappingMat(matInd,1)=ind;
         lymphMappingMat(matInd,2)=lymph.id;
-        lymphMappingMat(matInd,3)=i;        
+        lymphMappingMat(matInd,3)=i;
         mid=find(movie.momDaughTable(:,2)==lymph.id,1);
         if(movie.momDaughTable(mid,1)~=-1 && ~isempty(find(movie.momDaughTable(:,1)==lymph.id,1)))
             lymphMappingMat(matInd,4)=1;
         else
             lymphMappingMat(matInd,4)=0;
-        end       
+        end
         g=regexp(lymph.name,'_');
-        if(isempty(g))           
+        if(isempty(g))
             lymphMappingMat(matInd,5)=str2num(lymph.name);
         else
             lymphMappingMat(matInd,5)=str2num(lymph.name(1:g(1)-1));
@@ -1857,3 +1906,108 @@ for i=1:length(movie.sites)
 end
 
 
+% --------------------------------------------------------------------
+function addCell2List_Callback(hObject, eventdata, handles)
+% hObject    handle to addCell2List (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+p=getappdata(handles.cellContextMenu,'currPoint');
+cx=p(1,1);
+cy=p(1,2);
+lymphid=isDotInLymph(handles, cx,cy);
+monitorList=getMonitorList();
+if(lymphid)
+    monitorList= addLymphidToMonitorList(monitorList,lymphid);
+else %ask if want to add new lymph
+    res=inputdlg('add new lymph? y/n');
+    if (strcmp(res,'y'))
+        [r, lymphid]=magicWand(cx,cy,handles);
+        if(lymphid)
+            monitorList=addLymphidToMonitorList(monitorList,lymphid);
+        end
+    end
+end
+assignin('base','monitorList',monitorList);
+
+% --------------------------------------------------------------------
+function removeCellFromList_Callback(hObject, eventdata, handles)
+% hObject    handle to removeCellFromList (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+p=getappdata(handles.cellContextMenu,'currPoint');
+cx=p(1,1);
+cy=p(1,2);
+lymphid=isDotInLymph(handles, cx,cy);
+res= removeFromList(lymphid);
+if(res==3)
+        msgbox('no such lymph in list')   
+elseif(res==2)
+    msgbox('no such lymph in movie')
+end
+
+
+% --------------------------------------------------------------------
+function clearList_Callback(hObject, eventdata, handles)
+% hObject    handle to clearList (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+% --------------------------------------------------------------------
+res=inputdlg('Sure you want to clear list? y/n');
+monitorList=getMonitorList();
+if(strcmp(res,'y'))
+    monitorList=[];
+    assignin('base','monitorList',monitorList);
+end
+monitorList=getMonitorList();
+
+%return 1 if removed succesfully, 2 if no such lymph id, 3 if not in list
+function res= removeFromList(lymphid)
+monitorList=getMonitorList();
+if(lymphid)
+    ind=find(monitorList==lymphid);
+    if(isempty(ind))
+        res=2;
+    else
+        monitorList(ind)=[];
+        assignin('base','monitorList',monitorList);
+        res=1;
+    end
+else
+    res=3;
+end
+
+
+
+function cellContextMenu_Callback(hObject, eventdata, handles)
+% hObject    handle to cellContextMenu (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+currpoint=get(gca,'Currentpoint');
+% handles.cellContextPoint=currpoint;
+setappdata(handles.cellContextMenu,'currPoint',currpoint);% guidata(handles,handles)
+
+%adds the lymphid to the list if not allready exist
+function [monitorList]= addLymphidToMonitorList(monitorList,lymphid)
+if(isempty(find(monitorList==lymphid,1)))
+    monitorList(end+1)=lymphid;
+end
+
+%if lymphid is in list return 1 else 0
+function [inList]= isInMonitorList(lymphid)
+monitorList=getMonitorList();
+if(~isempty(find(monitorList==lymphid,1)))
+    inList=1;
+else
+    inList=0;
+end
+
+function [centroid,boundingBox]=getLymphCentroid(lymphid,handles)
+movie=getCellStruct();
+[lymph, siteind,lymphind]=getLymph(lymphid,movie);
+[sitenum,curframe]=getSiteFrame(handles);
+ind=find(lymph.frames==curframe);
+locations=lymph.locations{ind};
+im=getImage(handles.axes1);
+bw=poly2mask(locations(:,1), locations(:,2), size(im,1),size(im,2));
+centroid=regionprops(bw,'Centroid');
+boundingBox=regionprops(bw,'boundingBox');
