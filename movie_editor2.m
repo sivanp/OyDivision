@@ -433,6 +433,8 @@ showThreshold(handles);
 function res=addCircle_btn(handles)
 axes(handles.axes1);
 zoom off;
+set(get(get(handles.axes1,'UIContextMenu'),'Children'),'Visible','off') 
+
 
 % ploting the circle
 [cx cy, btn] = ginput(1);
@@ -479,6 +481,7 @@ if(res>0)
 elseif(res==0)
     updateLymphGui('', handles);
 end
+set(get(get(handles.axes1,'UIContextMenu'),'Children'),'Visible','on') 
 showImage(handles,1);
 showThreshold(handles);
 
@@ -1983,7 +1986,6 @@ function cellContextMenu_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 currpoint=get(gca,'Currentpoint');
-% handles.cellContextPoint=currpoint;
 setappdata(handles.cellContextMenu,'currPoint',currpoint);% guidata(handles,handles)
 
 %adds the lymphid to the list if not allready exist
@@ -2011,3 +2013,8 @@ im=getImage(handles.axes1);
 bw=poly2mask(locations(:,1), locations(:,2), size(im,1),size(im,2));
 centroid=regionprops(bw,'Centroid');
 boundingBox=regionprops(bw,'boundingBox');
+if(length(centroid)>1)
+    centroid=centroid(1);
+    boundingBox=boundingBox(1);
+end
+
