@@ -83,6 +83,8 @@ switch k
         callSelection(handles);
     case 'b'
         callStaySelection(handles);
+    case 'l'
+        callStayListSelection(handles);
 end
 %% return  1 for addPoly, 2 for circle , 3 for magic wand and 0 for none.
 function btn= whichSelectionBtnPressed(handles)
@@ -425,6 +427,41 @@ showImage(handles,1);
 showThreshold(handles);
 
 
+
+function callStayListSelection(handles)
+fwdFrame(handles);
+axes(handles.axes1);
+zoom off
+monitorList=getMonitorList();
+[sitenum, framenum]=getSiteFrame(handles);
+if(isempty(monitorList))
+    return;
+end
+success=1;
+movie=getCellStruct();
+for lymphid=monitorList    
+    lymph=getLymph(lymphid,movie);
+    updateLymphGui(lymphid, handles);
+    ind=find(lymph.frames==framenum-1);
+    if(isempty(ind))
+        success=0;
+        continue;
+    end
+    prevloc=lymph.locations{ind};
+    xs=prevloc(:,1);
+    ys=prevloc(:,2);
+    hold on
+    plot(xs,ys,'.y','MarkerSize',1);
+    [res, lymphid]=addLymphMarkToWorkspace(xs,ys,handles);
+    if(res>0)
+        updateLymphGui(lymphid, handles);
+    elseif(res==0)
+        success=0;
+        updateLymphGui('', handles);
+    end
+    showImage(handles,1);
+    showThreshold(handles);
+end
 % --- Executes on button press in addCircle_btn2.
 % function addCircle_btn_Callback(hObject, eventdata, handles)
 % % hObject    handle to addCircle_btn2 (see GCBO)
@@ -660,20 +697,6 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
 end
 
 
-%return a vector with all descendadnts ids
-function [descendantsIds]=getDescenIds(movie,lymphid,descendantsIds)
-% function [descendantsIds]=getDescenIds()
-if(isempty(movie.momDaughTable))
-    return
-end
-inds=find(movie.momDaughTable(:,1)==lymphid);
-%find daughters ids
-for i=1:length(inds)
-    daughtid=movie.momDaughTable(inds(i),2);
-    descendantsIds(end+1)=daughtid;
-    descendantsIds=getDescenIds(movie,daughtid,descendantsIds);
-end
-
 
 
 % --- Executes on button press in addMom_btn.
@@ -833,41 +856,11 @@ overlapFreq=overlaps/totals;
 
 
 function [lymph,movie, siteind,lymphind]=createNewLymph(lymphid,handles,movie)
-siteind=0;
-lymphind=0;
-lymph.id=lymphid;
-lymph.frames=[];
-lymph.locations=[];
-lymph.fluos=[];
-lymph.name='';
-lymph.remark=[];
-lymph.fate=0; %fate 1=div, fate 2=die   default: 0 =till end- out of frame or focus/nor dividing nor dying.
 [sitenum,framenum]=getSiteFrame(handles);
-if(lymphid==1 ||  sitenum>length(movie.sites))
-    ind=1;
-else
-    ind=length(movie.sites(sitenum).lymphs)+1;
-end
-movie.sites(sitenum).lymphs(ind)=lymph;
-siteind=sitenum;
-lymphind=ind;
-%add to mother-daughter table
 momid=get(handles.momid_edit,'String');
-if(isempty(momid))
-    movie=addMomDaughterCouple(movie,-1,lymphid);
-    lymph.name=num2str( movie.lineageInd);
-    momid=-1;
-else
-    momid=str2num(momid);
-    movie=addMomDaughterCouple(movie,momid,lymphid);
-end
-if(momid==-1) %adding lineage
-    lymph.name=num2str( movie.lineageInd);
-else
-    mom=getLymph(momid,movie);
-    numOfSisters=length(find(movie.momDaughTable(:,1)==momid));
-    lymph.name=sprintf('%s_%d', mom.name, numOfSisters);
-end
+[lymph,movie, siteind,lymphind]=createNewLymphNoGui(lymphid,sitenum,momid,movie);
+
+
 
 %return 0 if was unsuccesful, 1 otherwise
 function res=showImage(handles, keepzoom)
@@ -1337,61 +1330,6 @@ end
 assignin('base','movie',movie);
 
 
-%Inserts a mother daughter couple to the movie table, and advances the
-%table index- returns the changed movie structure. if momid=-1 increases
-%the lineage index as well
-function movie= addMomDaughterCouple(movie, momid, lymphid)
-% check if any of the lymph descendants are mom.
-
-if(~isempty(movie.momDaughTable))
-    inds=find(movie.momDaughTable(:,1)==momid & movie.momDaughTable(:,2)==lymphid);
-    if(~isempty(inds))
-        msgbox('mom-daughter couple allready exist');
-        return
-    end
-end
-mom=getLymph(momid,movie);
-
-if(isempty(mom)&& momid~=-1)
-    msgbox(' could not find mother cell in struct');
-    return
-end
-lymph=getLymph(lymphid,movie);
-if(isempty(lymph))
-    msgbox(' could not find daughter cell in struct');
-    return
-end
-[descenIds]=getDescenIds(movie,lymphid,[]);
-for i=1:length(descenIds)
-    if(descenIds(i)==momid)
-        msgbox('mom is a descendants- beware of CIRCLES!!!');
-        return;
-    end
-end
-ind=movie.momDaughInd()+1;
-movie.momDaughTable(ind,1:2)=[momid,lymphid];
-movie.momDaughInd=ind;
-if(momid==-1)
-    movie.lineageInd=movie.lineageInd+1;
-else %delete a line which has -1 as mom of the lymph
-    ind=find(movie.momDaughTable(:,1)==-1 & movie.momDaughTable(:,2)==lymphid);
-    if(~isempty(ind))
-        movie.momDaughTable(ind,:)=[];
-        movie.momDaughInd=movie.momDaughInd-1;
-    end
-end
-%if this is the only mom- and lymp name has allready been initizlized, and
-%is different than mom
-inds=find(movie.momDaughTable(:,2)==lymphid);
-if(length(inds)==1 && movie.momDaughTable(inds,1)~=-1 && ~isempty(lymph.name))
-    lymphLin=regexp(lymph.name, '(\d+)','tokens');
-    lymphLin=lymphLin{1}{1};
-    momLin=regexp(mom.name, '(\d+)','tokens');
-    momLin=momLin{1}{1};
-    if(~strcmp(momLin,lymphLin))
-        movie= ame(momid, mom.name, movie);
-    end
-end
 
 
 
@@ -1719,7 +1657,7 @@ projectDir=get(handles.edit1 ,'String');
 [filename,projectDir]= uigetfile('*.tif', 'load phase path',projectDir);
 % i=regexp(filename,'_\d+_\d+.tif');
 s2=regexp(filename, '_', 'split');
-i=regexp(filename,s2{end})
+i=regexp(filename,s2{end});
 if(~isempty(i))
     fileTemplate=filename(1:i-1);
 end
@@ -1855,7 +1793,7 @@ projectDir=get(handles.edit1 ,'String');
 path=sprintf('%s\\%s', projectDir, filename);
 load(path,'movie');
 assignin('base','movie',movie);
-allLymphs=[];
+% allLymphs=[];
 lymphMappingMat=[];
 ind=1;
 matInd=1;
@@ -1870,6 +1808,12 @@ for i=1:length(movie.sites)
         lymph.fate=l.fate;
         [sframes,sinds]=sort(l.frames);
         lymph.frames=sframes;
+        inds=find(sframes>2000);
+        %%added for 13.10.11 several lines analysis
+        if(~isempty(inds))
+            sframes(inds)=sframes(inds)-798;
+        end
+        %%added for 13.10.11 several lines analysis
         lymph.times=movie.times(sframes-1000);
         lymph.locations=l.locations(sinds);
         for f=1:length(l.fluos)
@@ -1885,7 +1829,7 @@ for i=1:length(movie.sites)
             lymph.fluos{f}=nfluo;
         end
         %
-        allLymphs{ind}=lymph;
+        allLymphs(ind)=lymph;
         lymphMappingMat(matInd,1)=ind;
         lymphMappingMat(matInd,2)=lymph.id;
         lymphMappingMat(matInd,3)=i;
