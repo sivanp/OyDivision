@@ -1201,6 +1201,9 @@ end
 % [x y] = ginput(1);
 % [res, lymphid,centroid,bBox]=magicWand(x,y,handles);
 monitorList=getMonitorList();
+if(isempty(monitorList))
+    return;
+end
 %first time- collect all centroids
 for l=1:length(monitorList)
     lymphid=monitorList(l);
