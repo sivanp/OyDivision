@@ -9,8 +9,7 @@ for i=1: length(movie.sites)
     if(isempty(lymphs))
         continue;
     end
-    for j=1:length(lymphs)
-               
+    for j=1:length(lymphs)               
         clear 'flymph'
         clear 'fluo'
         lymph=lymphs(j);

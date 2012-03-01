@@ -8,7 +8,12 @@ lymph.fluos=[];
 lymph.name='';
 lymph.remark=[];
 lymph.fate=0; %fate 1=div, fate 2=die   default: 0 =till end- out of frame or focus/nor dividing nor dying.
-if(lymphid==1 ||  sitenum>length(movie.sites))
+if(lymphid==1)
+    if(~isfield(movie,'sites') || sitenum>length(movie.sites) || isempty(movie.sites(sitenum).lymphs ))
+        ind=1;
+    end
+end
+if(~isfield(movie,'sites')|| sitenum>length(movie.sites))    
     ind=1;
 else
     ind=length(movie.sites(sitenum).lymphs)+1;

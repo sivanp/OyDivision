@@ -1,46 +1,51 @@
 %this function creates a new movie which holds the addition of the lymphs of movie2 in the given sties to movie1
 function [movie]=addLymphsFromOneMovieStructToAnother(movie1,movie2,sites)
 convIds=[-1,-1];
-%first we add the mothers than the daughters
-% momsinds=find(movie2.momDaughTable(:,1)==-1);
-% oldmomids=movie2.momDaughTable(momsinds,2);
+%first make sure maxLymphId is correct-assuming if max is not 0 its
+%allright
+movie=movie1;
+if(movie.maxLymphId==0)
+    for i=1:length(movie.sites)
+        lymphs=movie.sites(i).lymphs;
+        for j=1:length(lymphs)
+            if(movie.maxLymphId<lymphs(j).id)
+                movie.maxLymphId=lymphs(j).id;
+            end
+        end
+    end
+    %in this case we will also change momDaughInd to the same value
+%     movie.momDaughInd=movie.maxLymphId;
+end
+%Second we add all cells
 
-for s=1:length(sites)
-    movie=movie1;
+for s=1:length(sites)    
     site=sites(s);
     oldlymphs=movie2.sites(site).lymphs;
     newlymphs=[];
     %first we add the mothers
     for i=1:length(oldlymphs)
-        lymph=oldlymphs(i);
-        inds=find(movie2.momDaughTable(:,2)==lymph.id);
-        if(movie2.momDaughTable(inds(1),1)==-1) %assuming we have -1 only once if any.
-            newid=movie.maxLymphId+1;
-            convIds(end+1,1:2)=[lymph.id,newid];
-            [newlymph,movie, siteind,lymphind]=createNewLymphNoGui(newid,site,[],movie);
-            [movie,newlymph]=addnewLymph(movie, lymph, newlymph);
-            %             movie.sites(site).lymphs(end+1)=newlymph;
-        end
+        lymph=oldlymphs(i);        
+        newid=movie.maxLymphId+1;
+        convIds(end+1,1:2)=[lymph.id,newid];
+        [newlymph,movie, siteind,lymphind]=createNewLymphNoGui(newid,site,[],movie);
+        [movie,newlymph]=addnewLymph(movie, lymph, newlymph);
     end
     
-    %now we add the the daughters
+    %now we add the mother daughter mapping
     for i=1:length(oldlymphs)
         lymph=oldlymphs(i);
+        lymphind=find(convIds(:,1)==lymph.id);
+        newid=convIds(lymphind,2);      
         inds=find(movie2.momDaughTable(:,2)==lymph.id);
         if(movie2.momDaughTable(inds(1),1)~=-1) %have mothers
-            newid=movie.maxLymphId+1;
-            convIds(end+1,1:2)=[lymph.id,newid];
-            oldmomid=movie2.momDaughTable(inds(1),1);
-            momind=find(convIds(:,1)==oldmomid);
-            newmomid=convIds(momind,2);
-            [newlymph,movie, siteind,lymphind]=createNewLymphNoGui(newid,site,num2str(newmomid),movie);
-            [movie,newlymph]=addnewLymph(movie, lymph, newlymph);
-            for m=2:length(inds) %% more mothers
-                oldmomid=movie2.momDaughTable(inds(m),1);
+            for j=1:length(inds)
+                oldmomid=movie2.momDaughTable(inds(j),1);
                 momind=find(convIds(:,1)==oldmomid);
-                newmomid=convIds(momind,2);
+                newmomid=convIds(momind,2);           
                 movie=addMomDaughterCouple(movie, newmomid, newid);
             end
+%         else
+%            movie=addMomDaughterCouple(movie, -1, newid); 
         end
     end
 end
@@ -52,7 +57,7 @@ newlymph.frames=oldlymph.frames;
 newlymph.locations=oldlymph.locations;
 newlymph.fluos=oldlymph.fluos;
 newlymph.remark=oldlymph.remark;
-newlymph.fate=oldlymph.fate;
+% newlymph.fate=oldlymph.fate;
 movie.sites(siteind).lymphs(lymphind)=newlymph;
 if(movie.maxLymphId<newlymph.id) %this is new movie structure or new cell created
     movie.maxLymphId=newlymph.id;

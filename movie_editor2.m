@@ -25,7 +25,7 @@ function varargout = movie_editor2(varargin)
 
 % Edit the above text to modify the response to help movie_editor2
 
-% Last Modified by GUIDE v2.5 18-Dec-2011 17:52:38
+% Last Modified by GUIDE v2.5 23-Jan-2012 09:21:26
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -439,7 +439,7 @@ if(isempty(monitorList))
 end
 success=1;
 movie=getCellStruct();
-for lymphid=monitorList    
+for lymphid=monitorList
     lymph=getLymph(lymphid,movie);
     updateLymphGui(lymphid, handles);
     ind=find(lymph.frames==framenum-1);
@@ -470,7 +470,7 @@ end
 function res=addCircle_btn(handles)
 axes(handles.axes1);
 zoom off;
-set(get(get(handles.axes1,'UIContextMenu'),'Children'),'Visible','off') 
+set(get(get(handles.axes1,'UIContextMenu'),'Children'),'Visible','off')
 
 
 % ploting the circle
@@ -518,7 +518,7 @@ if(res>0)
 elseif(res==0)
     updateLymphGui('', handles);
 end
-set(get(get(handles.axes1,'UIContextMenu'),'Children'),'Visible','on') 
+set(get(get(handles.axes1,'UIContextMenu'),'Children'),'Visible','on')
 showImage(handles,1);
 showThreshold(handles);
 
@@ -1214,7 +1214,7 @@ end
 res=1;
 while(isPressed && res)
     fwdFrame(handles);
-    for l=1:length(monitorList)        
+    for l=1:length(monitorList)
         bwthresh=thresholdImage(handles);
         L=bwlabel(bwthresh);
         lymphid=monitorList(l);
@@ -1252,8 +1252,8 @@ while(isPressed && res)
         xs=B(:,2);
         ys=B(:,1);
         centroid = regionprops(L, 'centroid');
-%         centroid=centroid.Centroid;
-        centroids(l)=centroid; %updating the new centorid 
+        %         centroid=centroid.Centroid;
+        centroids(l)=centroid; %updating the new centorid
         [r, lymphid]=addLymphMarkToWorkspace(xs,ys,handles);
         if(r>0)
             updateLymphGui(lymphid, handles);
@@ -1265,13 +1265,22 @@ while(isPressed && res)
             
         end
         showImage(handles,1);
-        showThreshold(handles);        
+        showThreshold(handles);
         isPressed = get(hObject,'Value');
         
     end
     pause(0.1);
 end
 
+
+function movie = initMovieStruct()
+movie.momDaughTable=[];
+movie.maxLymphId=0;
+movie.momDaughInd=0;
+movie.lineageInd=0;
+assignin('base','movie',movie);
+monitorList=[];
+assignin('base','monitorList',monitorList);
 
 
 %return 0 if not added, 1 if did, 2-if new cell was created.
@@ -1280,13 +1289,7 @@ function [wasAdded, lymphid]=addLymphMarkToWorkspace(xs,ys,handles)
 wasAdded=0;
 movie=getCellStruct();
 if (isempty(movie)) %create new movie object
-    movie.momDaughTable=[];
-    movie.maxLymphId=0;
-    movie.momDaughInd=0;
-    movie.lineageInd=0;
-    assignin('base','movie',movie);
-    monitorList=[];
-    assignin('base','monitorList',monitorList);
+    movie=initMovieStruct();
 end
 
 if(isfield(movie,'sites') && length(movie.sites)>=sitenum && isfield(movie.sites(sitenum), 'lymphs') && ~isempty(movie.sites(sitenum).lymphs))
@@ -1803,56 +1806,65 @@ matInd=1;
 %TODO check if fate -divide mathces the movie.MomDaughtTable
 for i=1:length(movie.sites)
     lymphs=movie.sites(i).lymphs;
-    for j=1:length(lymphs)
-        l=lymphs(j);
-        %sortLymph
-        lymph.id=l.id;
-        lymph.name=l.name;
-        lymph.fate=l.fate;
-        [sframes,sinds]=sort(l.frames);
-        lymph.frames=sframes;
-        inds=find(sframes>2000);
-        %%added for 13.10.11 several lines analysis
-        if(~isempty(inds))
-            sframes(inds)=sframes(inds)-798;
+    if(size(lymphs,1)>0)
+        for j=1:length(lymphs)
+            l=lymphs(j);
+            %sortLymph
+            lymph.id=l.id;
+            lymph.name=l.name;
+            %             lymph.fate=l.fate; %% need to resume this
+            [sframes,sinds]=sort(l.frames);
+            lymph.frames=sframes;
+            %             inds=find(sframes>2000);
+            %             %%added for 13.10.11 several lines analysis
+            %             if(~isempty(inds))
+            %                 sframes(inds)=sframes(inds)-798;
+            %             end
+            %             %%added for 13.10.11 several lines analysis
+            
+            sframes
+            lymph.times=movie.times(sframes-1000);
+            lymph.locations=l.locations(sinds);
+            for f=1:length(l.fluos)
+                fluo=l.fluos{f};
+                nfluo.name=fluo.name;
+                nfluo.path=fluo.path;
+                if(isfield(fluo,'Frames'))
+                    [sframes,sinds]=sort(fluo.Frames);
+                    nfluo.Frames=sframes;
+                    nfluo.Means=fluo.Means(sinds);
+                    %                 nfluo.Max=fluo.Max(sinds);
+                    %                 nfluo.Min=fluo.Min(sinds);
+                    %                 nfluo.Std=fluo.Std(sinds);
+                else
+                    nfluo.Frames=[];
+                    nfluo.Means=[];
+                end
+                lymph.fluos{f}=nfluo;
+            end
+            %
+            allLymphs(ind)=lymph;
+            lymphMappingMat(matInd,1)=ind;
+            lymphMappingMat(matInd,2)=lymph.id;
+            lymphMappingMat(matInd,3)=i;
+            mid=find(movie.momDaughTable(:,2)==lymph.id,1);
+            if(movie.momDaughTable(mid,1)~=-1 && ~isempty(find(movie.momDaughTable(:,1)==lymph.id,1)))
+                lymphMappingMat(matInd,4)=1;
+            else
+                lymphMappingMat(matInd,4)=0;
+            end
+            g=regexp(lymph.name,'_');
+            if(isempty(g))
+                lymphMappingMat(matInd,5)=str2num(lymph.name);
+            else
+                lymphMappingMat(matInd,5)=str2num(lymph.name(1:g(1)-1));
+            end
+            matInd=matInd+1;
+            ind=ind+1;
         end
-        %%added for 13.10.11 several lines analysis
-        lymph.times=movie.times(sframes-1000);
-        lymph.locations=l.locations(sinds);
-        for f=1:length(l.fluos)
-            fluo=l.fluos{f};
-            nfluo.name=fluo.name;
-            nfluo.path=fluo.path;
-            [sframes,sinds]=sort(fluo.Frames);
-            nfluo.Frames=sframes;
-            nfluo.Means=fluo.Means(sinds);
-            nfluo.Max=fluo.Max(sinds);
-            nfluo.Min=fluo.Min(sinds);
-            nfluo.Std=fluo.Std(sinds);
-            lymph.fluos{f}=nfluo;
-        end
-        %
-        allLymphs(ind)=lymph;
-        lymphMappingMat(matInd,1)=ind;
-        lymphMappingMat(matInd,2)=lymph.id;
-        lymphMappingMat(matInd,3)=i;
-        mid=find(movie.momDaughTable(:,2)==lymph.id,1);
-        if(movie.momDaughTable(mid,1)~=-1 && ~isempty(find(movie.momDaughTable(:,1)==lymph.id,1)))
-            lymphMappingMat(matInd,4)=1;
-        else
-            lymphMappingMat(matInd,4)=0;
-        end
-        g=regexp(lymph.name,'_');
-        if(isempty(g))
-            lymphMappingMat(matInd,5)=str2num(lymph.name);
-        else
-            lymphMappingMat(matInd,5)=str2num(lymph.name(1:g(1)-1));
-        end
-        matInd=matInd+1;
-        ind=ind+1;
+        assignin('base','allLymphs',allLymphs);
+        assignin('base','lymphMappingMat',lymphMappingMat);
     end
-    assignin('base','allLymphs',allLymphs);
-    assignin('base','lymphMappingMat',lymphMappingMat);
 end
 
 
@@ -1890,7 +1902,7 @@ cy=p(1,2);
 lymphid=isDotInLymph(handles, cx,cy);
 res= removeFromList(lymphid);
 if(res==3)
-        msgbox('no such lymph in list')   
+    msgbox('no such lymph in list')
 elseif(res==2)
     msgbox('no such lymph in movie')
 end
@@ -1964,4 +1976,177 @@ if(length(centroid)>1)
     centroid=centroid(1);
     boundingBox=boundingBox(1);
 end
+% % %
+
+
+function [movie]=importCellStruct(path,siteind)
+fid = fopen(path);
+tline = fgetl(fid);
+clear movie;
+movie=initMovieStruct();
+part=0;
+cellId=-1;
+propName=[];
+inprop=-1;
+while ischar(tline)
+    s=regexp(tline,'---','split');
+    if(size(s,2)>1)
+        part=part+1;
+        propName=regexp(tline,'propName=','split');
+        if(size(propName,2)>1)  % properties
+            inprop=1;
+            propName=regexp(propName{2},'---','split');
+            propName=propName{1};
+            movie=addFluoField(movie,{propName});
+        end
+        mom=regexp(tline,'mother daughter','split');
+        if(size(mom,2)>1)
+            inprop=0;
+        end
+    else
+        if(strcmp(s{1},''))
+            tline = fgets(fid);
+            cellId=-1;
+            continue;
+        end
+        
+        if(part==1)
+            movie=createCell(tline,movie,siteind);
+        elseif(part==2) %cells polygons
+            %get lymph id
+            if(cellId==-1)
+                cellId=getLymphId(tline);
+            else
+                movie=addLocation(tline,movie,cellId);
+            end
+            
+        elseif(part>2) % cells properties or mother duaghter
+            if(inprop==1)%properties
+                if(cellId==-1)
+                    cellId=getLymphId(tline);
+                else
+                    %                 cellId=getLymphId(tline);
+                    %                 tline = fgetl(fid);
+                    %                 disp(tline);
+                    movie=addProperty(tline,propName,cellId,movie);
+                end
+            else %mother daugther
+                md=regexp(tline,',','split');
+                momid=str2num(md{1});
+                lymphid=str2num(md{2});
+                movie=addMomDaughterCouple(movie, momid, lymphid);
+            end
+            
+        end
+        
+    end
+    tline = fgetl(fid);
+    disp(tline)
+end
+fclose(fid);
+
+function id=getLymphId(tline)
+tline = strtrim(tline);
+a = regexp(tline, '=', 'split');
+a=a{2};
+b=regexp(a,'\W;\W','split');
+id=str2num(b{1});
+
+
+
+function movie=createCell(tline,movie,siteind)
+lymphid =getLymphId(tline);
+[lymph,movie, siteind,lymphind]=createNewLymphNoGui(lymphid,siteind,'-1',movie);
+%adding name to this lymph
+tline = strtrim(tline);
+a = regexp(tline, '=', 'split');
+a=a{2};
+b=regexp(a,'\W;\W','split');
+c=regexp(b{2},'\s','split');
+name=(c{1});
+lymph.name=name;
+lymph.fate=0;
+if(strcmp(c{2},'true'));
+    lymph.fate=2;
+end
+if(size(c,2)>2)
+    lymph.remarkd=c{3};
+end
+movie.sites(siteind).lymphs(lymphind)=lymph;
+
+function movie=addLocation(tline,movie,lymphid)
+tline = strtrim(tline);
+s = regexp(tline,'=','split');
+framenum=s{1};
+framenum=str2num(framenum);
+locs=regexp(s{end},';','split');
+for i=1:size(locs,2)-1
+    loc=locs{i};
+    xy=regexp(loc,',','split');
+    xs(i)=str2num(xy{1});
+    ys(i)=str2num(xy{2});
+end
+[lymph,siteind,lymphind]= getLymph(lymphid,movie);
+ind=length(lymph.frames)+1;
+lymph.locations{ind}=[xs',ys'];
+lymph.frames(ind)=framenum;
+lymphs=movie.sites(siteind).lymphs;
+lymphs(lymphind)=lymph;
+movie.sites(siteind).lymphs=lymphs;
+
+function movie=addProperty(tline,propName,lymphid, movie)
+tline = strtrim(tline);
+[lymph,siteind,lymphind]= getLymph(lymphid,movie);
+perFrame=regexp(tline,';','split');
+
+for i=1:size(perFrame,2)-1
+    s = regexp(perFrame{i},'=','split');
+    framenum=s{1};
+    framenum=str2num(framenum);
+    meanFluo=str2num(s{2});
+    if(lymph.id==1370)
+        i
+    end
+    fluos=lymph.fluos;
+    i=1;
+    found=0;
+    while(~found && i<=length(fluos))
+        ftype=fluos{i};
+        found=strcmp(ftype.name,propName);
+        if(~found)
+            i=i+1;
+        end
+    end
+    if(~found)
+        return;
+    end
+    if(isempty(fluos{i}.Frames))
+        ind=1;
+    else
+        ind=length(fluos{i}.Frames)+1;
+    end
+    fluos{i}.Frames(ind)=framenum;
+    fluos{i}.Means(ind)=meanFluo;
+    lymph.fluos=fluos;
+    movie.sites(siteind).lymphs(lymphind)=lymph;
+end
+
+
+
+
+% --------------------------------------------------------------------
+function importStructBtn_Callback(hObject, eventdata, handles)
+% hObject    handle to importStructBtn (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+projectDir=get(handles.edit1 ,'String');
+[filename,projectDir]= uigetfile('*', 'load movie struct',projectDir);
+path=sprintf('%s\\%s', projectDir, filename);
+siteind=inputdlg('what is the site''s number?');
+siteind=siteind{1};
+siteind=str2num(siteind);
+movie=importCellStruct(path,siteind);
+% movie=importCellStruct('C:\Users\sivan-nqb\Desktop\\cell StructMat',1);
+assignin('base','movie',movie);
+
 

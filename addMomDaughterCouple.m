@@ -49,7 +49,26 @@ if(length(inds)==1 && movie.momDaughTable(inds,1)~=-1 && ~isempty(lymph.name))
     lymphLin=lymphLin{1}{1};
     momLin=regexp(mom.name, '(\d+)','tokens');
     momLin=momLin{1}{1};
-    if(~strcmp(momLin,lymphLin))
+    if(~strcmp(momLin,lymphLin))                
         movie= ame(momid, mom.name, movie);
     end
 end
+
+
+%changes the ancestor cell and its predecessors name to the one begining in
+%name. (this works recursively in DFS...)
+function movie = ame(lymphid, name, movie)
+[lymph,siteind,lymphind]=getLymph(lymphid, movie);
+if(isempty(lymph))
+    return;
+end
+lymph.name=name;
+movie.sites(siteind).lymphs(lymphind)=lymph;
+predInds=find(movie.momDaughTable(:, 1)==lymphid);
+for i=1:length(predInds)
+    predId=movie.momDaughTable(predInds(i),2);
+    predName = sprintf('%s_%d', name, i);
+    movie= ame(predId, predName, movie);
+end
+
+
