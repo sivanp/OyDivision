@@ -1804,25 +1804,29 @@ lymphMappingMat=[];
 ind=1;
 matInd=1;
 %TODO check if fate -divide mathces the movie.MomDaughtTable
-for i=1:length(movie.sites)
+for i=1:length(movie.sites)    
     lymphs=movie.sites(i).lymphs;
     if(size(lymphs,1)>0)
         for j=1:length(lymphs)
             l=lymphs(j);
             %sortLymph
+            if(isempty(l.id))
+                continue;
+            end
             lymph.id=l.id;
             lymph.name=l.name;
-            %             lymph.fate=l.fate; %% need to resume this
+            lymph.fate=l.fate; 
+            lymph.remark=l.remark;
             [sframes,sinds]=sort(l.frames);
             lymph.frames=sframes;
-            %             inds=find(sframes>2000);
-            %             %%added for 13.10.11 several lines analysis
-            %             if(~isempty(inds))
-            %                 sframes(inds)=sframes(inds)-798;
-            %             end
-            %             %%added for 13.10.11 several lines analysis
-            
-            sframes
+                        inds=find(sframes>1006);
+            %             %%added for 5.3.12 several 
+                        if(~isempty(inds))
+                            sframes(inds)=sframes(inds)-1;%should be 805 for site 2
+                        end
+            %          
+          
+          
             lymph.times=movie.times(sframes-1000);
             lymph.locations=l.locations(sinds);
             for f=1:length(l.fluos)
@@ -1842,7 +1846,7 @@ for i=1:length(movie.sites)
                 end
                 lymph.fluos{f}=nfluo;
             end
-            %
+           
             allLymphs(ind)=lymph;
             lymphMappingMat(matInd,1)=ind;
             lymphMappingMat(matInd,2)=lymph.id;
@@ -2058,7 +2062,7 @@ function movie=createCell(tline,movie,siteind)
 lymphid =getLymphId(tline);
 [lymph,movie, siteind,lymphind]=createNewLymphNoGui(lymphid,siteind,'-1',movie);
 %adding name to this lymph
-tline = strtrim(tline);
+tline = strtrim(tline)
 a = regexp(tline, '=', 'split');
 a=a{2};
 b=regexp(a,'\W;\W','split');
@@ -2070,7 +2074,10 @@ if(strcmp(c{2},'true'));
     lymph.fate=2;
 end
 if(size(c,2)>2)
-    lymph.remarkd=c{3};
+    lymph.remark=c{3};
+end
+if(lymph.id==17)
+    lymph.id
 end
 movie.sites(siteind).lymphs(lymphind)=lymph;
 

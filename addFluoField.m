@@ -21,7 +21,12 @@ for i=1:length(movie.sites)
         flymph.remark=lymph.remark;
         flymph.frames=lymph.frames;
         flymph.locations=lymph.locations;
-        
+        flymph.fate=lymph.fate;
+        if(~isempty(lymph.remark))
+            flymph.remark=lymph.remark;
+        else
+            flymph.remark='';
+        end
         for k=1:length(lymph.frames)
             framenum=lymph.frames(k);                                                
             fluo.Frames=[];
